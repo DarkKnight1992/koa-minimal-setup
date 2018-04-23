@@ -1,15 +1,16 @@
 import Koa from "koa";
+import db from "./db";
 import bodyParser from "koa-body";
+import path from "path";
 import logger from "./logger";
 import indexRoute, { logRoutes } from "./routes";
 
-import db from "./db";
 
 const app = new Koa();
 
 //Set up body parsing middleware
 app.use(bodyParser({
-  formidable:{uploadDir: "./uploads"},
+  formidable:{uploadDir: path.join(__dirname, process.env.UPLOADS_DIR)},
   multipart: true,
   urlencoded: true
 }));

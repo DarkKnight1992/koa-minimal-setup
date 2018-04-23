@@ -8,8 +8,8 @@ const dbName = "local";
 export default function () {
   return async function (ctx, next) {
     try {
-      ctx.db = await mongodb.MongoClient.connect(url);
-      ctx.dbInstance = ctx.db.db(dbName);
+      ctx.db = await mongodb.MongoClient.connect(process.env.DB_HOST || url);
+      ctx.dbInstance = ctx.db.db(process.env.DB_NAME || dbName);
     } catch (e) {
       ctx.body = {
         success: false,
