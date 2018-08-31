@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { getPool, getClient } from "./connection";
+import { getPool, getClient } from "./pgConnect";
 
 const dataTypes = {
   Timestamp: "TIMESTAMPTZ",  // is a timezone-aware timestamp data type.
