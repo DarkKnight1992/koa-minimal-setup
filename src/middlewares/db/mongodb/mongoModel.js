@@ -44,7 +44,7 @@ export default class MongoNest {
     case "Char":
     case "String":
     case "Text":
-      validations = validations.string();
+      validations = validations.string().allow("");
       break;
     default:
         // do nothing

@@ -50,7 +50,7 @@ export default class {
     case "Char":
     case "String":
     case "Text":
-      validations = validations.string();
+      validations = validations.string().allow("");
       break;
     default:
         // do nothing
