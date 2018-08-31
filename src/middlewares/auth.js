@@ -88,9 +88,9 @@ export default function () {
             // User exists but wrong password, log the error 
             status = 401;
             message =  "Invalid Password ";
-          } else if(!user.data.isVerified || !user.data.isActive) {
+          } else if(!user.data.isverified || !user.data.isactive) {
             status = 401;
-            message =  !user.data.isVerified ? "Please verify your email" : "Your Account is disabled or deleted. Contact us as support@zoklean.com";
+            message =  !user.data.isverified ? "Please verify your email" : "Your Account is disabled or deleted. Contact us as support@zoklean.com";
           } else {
             // User and password both match, return user from 
             delete user.password;

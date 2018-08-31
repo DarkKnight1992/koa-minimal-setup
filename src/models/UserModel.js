@@ -16,6 +16,13 @@ const UserSchema = {
   },
   verificationcode: {
     type: "String"
+  },
+  isverified: {
+    type: "Boolean"
+  },
+  isactive: {
+    type: "Boolean",
+    defaultValue: true
   }
 };
 

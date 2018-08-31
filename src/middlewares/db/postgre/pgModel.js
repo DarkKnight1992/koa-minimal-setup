@@ -37,6 +37,7 @@ export default class {
     this.collection = null;
     this.schema = null;
     this.schemaUpdate = null;
+    this.modelDefaults = {};
   }
 
   /**
@@ -77,11 +78,24 @@ export default class {
     return validations;
   }
 
+  _checkDefaults(fields) {
+    const modelDefaults = Object.keys(this.modelDefaults);
+    const queryFields = Object.keys(fields);
+    modelDefaults.map(col => {
+      if(queryFields.indexOf(col) === -1) {
+        fields[col] = this.modelDefaults[col];
+      }
+    });
+
+    return fields;
+  }
+
   /**
    * 
    * @param {Object} fields 
    */
   _createQueryMeta(fields) {
+    fields = this._checkDefaults(fields);
     const columns = [], values = [], valueList = [];
   
     Object.keys(fields).map((field, index) => {
@@ -89,7 +103,6 @@ export default class {
       values.push(fields[field]);
       valueList.push("$"+(index  + 1));
     });
-  
     return { columns, values, valueList};
   }
 
@@ -113,6 +126,11 @@ export default class {
    */
   async model(name, schema) {
     this.collection = name;
+    Object.keys(schema).map(col => {
+      if(schema[col].defaultValue) {
+        this.modelDefaults[col] = schema[col].defaultValue;
+      }
+    });
     const client = this.db,
       fields = Object.keys(schema);
     

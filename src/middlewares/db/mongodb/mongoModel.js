@@ -31,6 +31,7 @@ export default class MongoNest {
     this.collection = null;
     this.schema = null;
     this.schemaUpdate = null;
+    this.modelDefaults = {};
   }
 
   /**
@@ -73,10 +74,32 @@ export default class MongoNest {
 
   /**
    * 
+   * @param {Object} fields 
+   */
+  _checkDefaults(fields) {
+    const modelDefaults = Object.keys(this.modelDefaults);
+    const queryFields = Object.keys(fields);
+    modelDefaults.map(col => {
+      if(queryFields.indexOf(col) === -1) {
+        fields[col] = this.modelDefaults[col];
+      }
+    });
+
+    return fields;
+  }
+
+  /**
+   * 
    * @param {String} name 
    * @param {Object} schema 
    */
   async model(name, schema) {
+    Object.keys(schema).map(col => {
+      if(schema[col].defaultValue) {
+        this.modelDefaults[col] = schema[col].defaultValue;
+      }
+    });
+
     const client = this.db,
       fields = Object.keys(schema);
     
@@ -115,6 +138,8 @@ export default class MongoNest {
       throw new Error("Supplied document is not supported! Only Objects Accepted");
     }
 
+    doc = this._checkDefaults(doc);
+
     const {error} = Joi.validate(doc, this.schema);
     if(!error) {
       try {
@@ -138,6 +163,7 @@ export default class MongoNest {
     
     let schemaError;
     docs.map(doc => {
+      doc = this._checkDefaults(doc);
       const {error} = Joi.validate(doc, this.schema);
       if(error) schemaError = error;
     });
@@ -163,8 +189,7 @@ export default class MongoNest {
     }
 
     try {
-      if(Array.isArray(docs)) return await this.collection.insertMany(docs);
-      return await this.collection.insertOne(docs);
+      return await this.collection.insertMany(docs);
     } catch (e) {
       throw new Error(e);
     }
