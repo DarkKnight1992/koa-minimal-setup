@@ -1,6 +1,5 @@
 import Router from "koa-router";
-import Composer from "koa-compose";
-import User from "./UserRoutes";
+import UserRoutes from "./UserRoutes";
 
 var router = new Router({
   prefix: process.env.BASE_API_URL
@@ -10,4 +9,5 @@ router.get("/", async (ctx) => {
   ctx.body = "api routes";
 });
 
-export default Composer([router.routes(), User]);
+router.use(UserRoutes);
+export default router.routes();

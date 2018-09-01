@@ -3,8 +3,8 @@ import {UserController} from "../../controllers";
 import passport from "koa-passport";
 
 var router = new Router({
-  prefix: process.env.BASE_API_URL + "/user"
-});  //Prefixed all routes with /api/v1
+  prefix: "/user"
+});
 
 router.post("/register", UserController.register);
 router.post("/login", passport.authenticate("login"),  UserController.login);
