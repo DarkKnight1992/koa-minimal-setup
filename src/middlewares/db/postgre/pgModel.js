@@ -18,7 +18,6 @@ const dataTypes = {
   Text: "TEXT", // a character string with unlimited length.
   Object: "JSON", // plain JSON data that requires reparsing for each processing,
   SmartObject: "JSONB", //  JSON data in a binary format which is faster to process but slower to insert
-  Array: "ARRAY", // an array of strings, an array of integers, etc., in array columns
   Binary: "BIT",
   Boolean: "BOOLEAN", // true || false, 1 || 0
   UUID: "UUID", // Universal Unique Identifiers, guarantee a better uniqueness than SERIAL
@@ -29,6 +28,22 @@ const dataTypes = {
   Ploygon: "polygon", //– a closed geometric.
   INET: "inet", //– an IP4 address.
   Mac: "macaddr", //– a MAC address.
+  // Arrays 
+  "Date[]": "DATE[]", // the date values only.
+  "Time[]": "Time[]", // the time of day values.
+  "interval[]": "INTERVAL[]", // periods of time.
+  "Number[]": "INT[]", // a 4-byte integer that has a range from -2,147,483,648 to -2,147,483,647.
+  "BNumber[]": "BIGINT[]",
+  "SNumber[]": "SMALLINT[]", // 2-byte signed integer that has a range from -32,768 to 32,767.
+  "Serial[]": "SERIAL[]", // similar to AUTO_INCREMENT column in MySQL
+  "Double[]": "FLOAT[]", // a floating-point number whose precision, at least, n, up to a maximum of 8 bytes
+  "Real[]": "REAL[]", // a double-precision (8-byte) floating-point number.
+  "Numeric[]": "NUMERIC[]", // a real number with p digits with s number
+  "Char[]": "CHAR[]", // fixed-length character with space padded
+  "String[]": "VARCHAR[]", // variable-length character string
+  "Text[]": "TEXT[]", // a character string with unlimited length.
+  "Object[]": "JSON[]", // plain JSON data that requires reparsing for each processing,
+  "SmartObject[]": "JSONB[]", //  JSON data in a binary format which is faster to process but slower to
 };
 
 export default class {
@@ -182,13 +197,12 @@ export default class {
       const {columns, values, valueList} = this._createQueryMeta(value);
       
       const query = {
-        text: `INSERT INTO ${this.collection}(${columns}) VALUES(${valueList})`,
+        text: `INSERT INTO ${this.collection}(${columns}) VALUES(${valueList}) RETURNING *`,
         values
       };
 
       try {
-        const {rowCount} = await this.db.query(query);
-        return rowCount;
+        return await this.db.query(query);
       } catch(err) {
         throw new Error (err);
       }
@@ -346,6 +360,49 @@ export default class {
     try {
       const {rowCount} = await this.db.query(query);
       return rowCount;
+    } catch(err) {
+      throw new Error (err);
+    }
+  }
+  
+  /**
+   * @param {UUID} id 
+   */
+  async removeById (id){
+    const text = `DELETE FROM ${this.collection} WHERE _id = '${id}'`;
+
+    try {
+      return await this.db.query(text);
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  /**
+   * @param {String || Object} where
+   * @param {Array} compare  
+   */
+  async remove (where, compare){
+    let text = [`DELETE from ${this.collection}`];
+    let whereStr = "";
+
+    if(where && where.constructor === Object && Object.keys(where).length >= 0)  {
+      Object.keys(where).map(key => {
+        whereStr += ` ${key} = '${where[key]}'`;
+      });
+    } else {
+      compare = this._checkArray(compare);
+      compare.forEach((value, key) => {
+        const str = `$${key + 1}`;
+        where = where.replace(str, `'${value}'`);
+      });
+      whereStr = where;
+    }
+    text.push(`where ${whereStr}`);
+    text = text.join(" ");
+
+    try {
+      return await this.db.query(text);
     } catch(err) {
       throw new Error (err);
     }
