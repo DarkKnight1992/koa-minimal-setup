@@ -39,7 +39,8 @@ const bodyParseOpts = {
     }
   },
   multipart: true,
-  urlencoded: true
+  urlencoded: true,
+  strict: false
 };
 
 const publicPath = path.join(__dirname, process.env.VIEWS);
