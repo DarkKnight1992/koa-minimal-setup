@@ -53,6 +53,7 @@ export default class {
     this.schema = null;
     this.schemaUpdate = null;
     this.modelDefaults = {};
+    this.query = null;
   }
 
   /**
@@ -130,8 +131,34 @@ export default class {
     return !Array.isArray(array) ? [array] : array;
   }
 
+  /**
+   * 
+   * @param {Object} doc 
+   */
   _isObject(doc) {
     return doc.constructor === Object && Object.keys(doc).length > 0;
+  }
+
+  /**
+   * 
+   * @param {Object, String} where 
+   * @param {Array, String} values 
+   */
+  _whereClause(where, values) {
+    let whereStr = "";
+    if(where && where.constructor === Object && Object.keys(where).length >= 0)  {
+      Object.keys(where).map(key => {
+        whereStr += ` ${key} = '${where[key]}'`;
+      });
+    } else {
+      values = this._checkArray(values);
+      values.forEach((value, key) => {
+        const str = `$${key + 1}`;
+        where = where.replace(str, `'${value}'`);
+      });
+      whereStr = where;
+    }
+    return whereStr;
   }
 
   /**
@@ -146,8 +173,7 @@ export default class {
         this.modelDefaults[col] = schema[col].defaultValue;
       }
     });
-    const client = this.db,
-      fields = Object.keys(schema);
+    const fields = Object.keys(schema);
     
     let tableSchema = "", schemaValidations = {}, schemaValidationsUpdate = {};
     
@@ -170,7 +196,7 @@ export default class {
     this.schema = Joi.object().keys(schemaValidations);
     this.schemaUpdate = Joi.object().keys(schemaValidationsUpdate);
     
-    const createTableText = `
+    this.query = `
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";
       
       CREATE TABLE IF NOT EXISTS ${name} (
@@ -180,11 +206,7 @@ export default class {
       );
     `;
     
-    try {
-      await client.query(createTableText);
-    } catch (e) {
-      throw new Error (e);
-    }
+    await this.exec();
   }
 
   /**
@@ -201,11 +223,8 @@ export default class {
         values
       };
 
-      try {
-        return await this.db.query(query);
-      } catch(err) {
-        throw new Error (err);
-      }
+      this.query = query;
+      return await this.exec();
     } else {
       throw new Error (error);
     }
@@ -221,12 +240,9 @@ export default class {
       values: [id]
     };
 
-    try {
-      const {rows} = await this.db.query(query);
-      return rows[0];
-    } catch(err) {
-      throw new Error (err);
-    }
+    this.query = query;
+    const {rows} = await this.exec();
+    return rows[0];
   }
 
   /**
@@ -236,17 +252,13 @@ export default class {
    */
   async findOne(where, values) {
     values = this._checkArray(values);
+    const whereStr = this._whereClause(where, values);
     const query = {
-      text: `SELECT * FROM ${this.collection} WHERE ${where}`,
-      values
+      text: `SELECT * FROM ${this.collection} WHERE ${whereStr}`
     };
-
-    try {
-      const {rows} = await this.db.query(query);
-      return rows[0];
-    } catch(err) {
-      throw new Error (err);
-    }
+    this.query = query;
+    const {rows} = await this.exec();
+    return rows[0];
   }
 
   /**
@@ -261,12 +273,9 @@ export default class {
       values
     };
 
-    try {
-      const {rows} = await this.db.query(query);
-      return rows;
-    } catch(err) {
-      throw new Error (err);
-    }
+    this.query = query;
+    const {rows} = await this.exec();
+    return rows;
   }
 
   /**
@@ -302,18 +311,14 @@ export default class {
     // Return a complete query string
     text = text.join(" ");
 
+    text += " RETURNING *";
     const query = {
       text,
       values
     };
 
-    try {
-      const {rowCount} = await this.db.query(query);
-      return rowCount;
-    } catch(err) {
-      throw new Error (err);
-    }
-  
+    this.query = query;
+    return await this.exec();
   }
   
   /**
@@ -345,47 +350,28 @@ export default class {
     text.push(set.join(", "));
 
 
-    let whereStr = "";
-    if(where && where.constructor === Object && Object.keys(where).length >= 0)  {
-      Object.keys(where).map(key => {
-        whereStr += ` ${key} = '${where[key]}'`;
-      });
-    } else {
-      compare = this._checkArray(compare);
-      compare.forEach((value, key) => {
-        const str = `$${key + 1}`;
-        where = where.replace(str, `'${value}'`);
-      });
-      whereStr = where;
-    }
+    const whereStr = this._whereClause(where, compare);
     text.push(`where ${whereStr}`);
     text = text.join(" ");
 
+    text += " RETURNING *";
     const query = {
       text,
       values
     };
 
-    try {
-      const {rowCount} = await this.db.query(query);
-      return rowCount;
-    } catch(err) {
-      throw new Error (err);
-    }
+    this.query = query;
+    return await this.exec();
   }
   
   /**
    * @param {UUID} id 
    */
   async removeById (id){
-    const text = `DELETE FROM ${this.collection} WHERE _id = '${id}'`;
-
-    try {
-      return await this.db.query(text);
-    } catch (error) {
-      throw new Error(error);
-    }
+    this.query = `DELETE FROM ${this.collection} WHERE _id = '${id}'`;
+    return await this.exec();
   }
+
 
   /**
    * @param {String || Object} where
@@ -393,25 +379,53 @@ export default class {
    */
   async remove (where, compare){
     let text = [`DELETE from ${this.collection}`];
-    let whereStr = "";
-
-    if(where && where.constructor === Object && Object.keys(where).length >= 0)  {
-      Object.keys(where).map(key => {
-        whereStr += ` ${key} = '${where[key]}'`;
-      });
-    } else {
-      compare = this._checkArray(compare);
-      compare.forEach((value, key) => {
-        const str = `$${key + 1}`;
-        where = where.replace(str, `'${value}'`);
-      });
-      whereStr = where;
-    }
+    const whereStr = this._whereClause(where, compare);
     text.push(`where ${whereStr}`);
     text = text.join(" ");
+    this.query = text;
+    return await this.exec();
+  }
 
+  /**
+   * 
+   * @param {String} cols 
+   */
+  select(cols = "*") {
+    this.query = [`SELECT ${cols} FROM ${this.collection}`];
+    return this;
+  }
+
+  where(where, compare) {
+    const whereStr = this._whereClause(where, compare);
+    this.query.push(`WHERE ${whereStr}`);
+    return this;
+  }
+
+  offset(skipRecords) {
+    this.query.push(`OFFSET ${skipRecords}`);
+    return this;
+  }
+
+  limit(noOfResults) {
+    this.query.push(`LIMIT ${noOfResults}`);
+    return this;
+  }
+
+  order(orderBy) {
+    this.query.push(`ORDER BY ${orderBy}`);
+    return this;
+  }
+
+  join() {
+    return this;
+  }
+  
+  async exec() {
+    if(Array.isArray(this.query)) this.query = this.query.join(" ");
     try {
-      return await this.db.query(text);
+      const res = await this.db.query(this.query);
+      this.query = null;
+      return res;
     } catch(err) {
       throw new Error (err);
     }
