@@ -344,12 +344,21 @@ export default class {
     });
     text.push(set.join(", "));
 
-    compare = this._checkArray(compare);
-    compare.forEach((value, key) => {
-      const str = `$${key + 1}`;
-      where = where.replace(str, `'${value}'`);
-    });
-    text.push(`where ${where}`);
+
+    let whereStr = "";
+    if(where && where.constructor === Object && Object.keys(where).length >= 0)  {
+      Object.keys(where).map(key => {
+        whereStr += ` ${key} = '${where[key]}'`;
+      });
+    } else {
+      compare = this._checkArray(compare);
+      compare.forEach((value, key) => {
+        const str = `$${key + 1}`;
+        where = where.replace(str, `'${value}'`);
+      });
+      whereStr = where;
+    }
+    text.push(`where ${whereStr}`);
     text = text.join(" ");
 
     const query = {
